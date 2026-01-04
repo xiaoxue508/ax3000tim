@@ -27,7 +27,7 @@ env:
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
-
+  SSH_ACTIONS: true
 jobs:
   build:
     runs-on: ubuntu-22.04
@@ -77,7 +77,11 @@ jobs:
         chmod +x $DIY_P2_SH
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
-
+        
+    - name: SSH connection to Actions
+      uses: mxschmitt/action-tmate@v3
+      if: env.SSH_ACTIONS == 'true'
+      
     - name: Download package
       id: package
       run: |
