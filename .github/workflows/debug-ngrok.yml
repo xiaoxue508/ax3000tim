@@ -1,0 +1,58 @@
+name: Test Ngrok Manual
+
+on: workflow_dispatch
+
+jobs:
+  debug:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+
+      - name: Debug Secret (Check if exists)
+        env:
+          MY_TOKEN: ${{ secrets.NGROK_TOKEN }}
+        run: |
+          if [ -z "$MY_TOKEN" ]; then
+            echo "❌ 错误：GitHub 没有读到 NGROK_TOKEN！请检查 Secret 名字是否拼写正确。"
+            exit 1
+          else
+            echo "✅ 成功：读到了 Token！"
+            echo "Token 前两位是: ${MY_TOKEN:0:2} (应该显示 2 和其他字符)"
+            echo "Token 长度是: ${#MY_TOKEN}"
+          fi
+
+      - name: Start Ngrok Manually
+        env:
+          NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
+          SSH_PASS: "li199103"
+        run: |
+          # 1. 安装 Ngrok
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null && echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list && sudo apt-get update && sudo apt-get install ngrok
+          
+          # 2. 写入配置
+          ngrok config add-authtoken "$NGROK_TOKEN"
+          
+          # 3. 设置用户密码
+          echo "root:$SSH_PASS" | sudo chpasswd
+          
+          # 4. 开启 SSH 服务
+          sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config
+          sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+          sudo service sshd restart
+          
+          # 5. 启动 Ngrok (后台运行)
+          # 注意：这里指定了 region jp (日本)，如果不行可以换成 hk 或 us
+          nohup ngrok tcp --region jp 22 &
+          
+          # 6. 等待并获取连接地址
+          echo "正在连接 Ngrok..."
+          sleep 10
+          echo "=========================================="
+          echo "✅ SSH 连接命令："
+          curl -s http://localhost:4040/api/tunnels | python3 -c "import sys, json; print(json.load(sys.stdin)['tunnels'][0]['public_url'])" | sed 's/tcp:\/\//ssh root@/' | sed 's/:/ -p /'
+          echo "🔑 密码: $SSH_PASS"
+          echo "=========================================="
+          
+          # 7. 保持连接 (直到你在 SSH 里执行 touch /tmp/stop 才会停止)
+          while [ ! -f /tmp/stop ]; do sleep 10; done
