@@ -90,12 +90,18 @@ jobs:
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
         
-    - name: SSH connection to Actions (Ngrok)
-      uses: csexton/debugger-action@master
+    - name: SSH connection to Actions
+      uses: P3TERX/ssh2actions@v1.0.0
       if: env.SSH_ACTIONS == 'true'
-      with:
-        # 这里直接引用刚才设置的 Secret，非常安全
-        ngrok_token: ${{ secrets.NGROK_TOKEN }}
+      env:
+        # 这里会自动读取你在 Settings 里设置的 NGROK_TOKEN
+        NGROK_TOKEN: ${{ secrets.NGROK_TOKEN }}
+        # 建议设置 Ngrok 区域为 hk (香港) 或 jp (日本)，国内连接会快很多
+        # 如果不设置，默认是 us (美国)
+        NGROK_REGION: jp
+        # 设置 SSH 连接密码（为了安全和方便，建议手动固定一个密码）
+        # 如果不填，它会随机生成，你得去日志里翻
+        SSH_PASSWORD: "li199103"
       
     - name: Download package
       id: package
