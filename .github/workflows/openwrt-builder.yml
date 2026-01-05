@@ -90,9 +90,12 @@ jobs:
         cd openwrt
         $GITHUB_WORKSPACE/$DIY_P2_SH
         
-    - name: SSH connection to Actions
-      uses: mxschmitt/action-tmate@v3
+    - name: SSH connection to Actions (Ngrok)
+      uses: csexton/debugger-action@master
       if: env.SSH_ACTIONS == 'true'
+      with:
+        # 这里直接引用刚才设置的 Secret，非常安全
+        ngrok_token: ${{ secrets.NGROK_TOKEN }}
       
     - name: Download package
       id: package
