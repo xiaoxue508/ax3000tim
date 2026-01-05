@@ -12,7 +12,6 @@ on:
   workflow_dispatch:
 
 env:
-  # 官方 ImmortalWrt 源码
   REPO_URL: https://github.com/immortalwrt/immortalwrt
   REPO_BRANCH: openwrt-24.10
   FEEDS_CONF: feeds.conf.default
@@ -23,7 +22,6 @@ env:
   UPLOAD_FIRMWARE: true
   UPLOAD_RELEASE: true
   TZ: Asia/Shanghai
-  # 开启 SSH 交互编译
   SSH_ACTIONS: true
 
 jobs:
@@ -34,16 +32,17 @@ jobs:
     - name: Checkout
       uses: actions/checkout@main
 
-    # 1. 暴力清理空间 (解决空间不足的核心)
-    - name: Free Disk Space
-      run: |
-        echo "正在清理磁盘空间..."
-        sudo -E apt-get -q -y purge azure-cli ghc* zulu* hhvm llvm* firefox google-chrome-stable microsoft-edge-stable dotnet* powershell openjdk* mysql* php*
-        sudo -E apt-get -y autoremove --purge
-        sudo -E apt-get clean
-        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/lib/jvm
-        echo "磁盘清理完毕，剩余空间："
-        df -h
+    # 1. 恢复为你习惯的清理插件 (更稳定，不报错)
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      with:
+        tool-cache: true
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: true
 
     - name: Initialization environment
       env:
@@ -66,7 +65,7 @@ jobs:
         git clone $REPO_URL -b $REPO_BRANCH openwrt
         ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
-    # 2. 添加 Passwall 和 Cloudflared 源
+    # 2. 自动添加 Passwall 和 Cloudflared 源
     - name: Load custom feeds
       run: |
         [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
